@@ -1,15 +1,16 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { ClientProxy } from '@nestjs/microservices';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { TestResponse } from './test.dto';
 
 @Injectable()
 export class TestService {
   constructor(
     private readonly http: HttpService,
-    @Inject('USERS_SERVICE') private readonly busClient: ClientProxy,
+    private readonly amqpConnection: AmqpConnection,
   ) {}
 
-  async getUsers(): Promise<any> {
+  async getUsers(): Promise<TestResponse> {
     const { data } = await this.http.axiosRef.get(
       'https://jsonplaceholder.typicode.com/users',
     );
@@ -26,10 +27,7 @@ export class TestService {
     // Usuarios con id par
     const evenUsersById = data.filter((e) => e.id % 2 === 0);
 
-    console.log('evenUsersById', evenUsersById);
-
-    // Evento a la cola
-    this.busClient.emit('users-requested', {
+    this.amqpConnection.publish('users', 'users-requested', {
       users: evenUsersById,
     });
 
